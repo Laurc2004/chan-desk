@@ -6,6 +6,7 @@ import { RawBar, Signal, Pivot } from '@/lib/chan/types';
 const KIND_TAG: Record<string, string> = {
   sanmai_buy: '三买', sanmai_sell: '三卖',
   pivot_break_up: '上破', pivot_break_down: '下破',
+  yimai_buy: '一买', yimai_sell: '一卖', ermai_buy: '二买', ermai_sell: '二卖',
 };
 
 export default function KlineChart({ bars, signals, pivots, symbol, gran }: {

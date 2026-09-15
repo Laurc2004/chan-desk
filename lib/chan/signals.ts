@@ -87,6 +87,26 @@ export function findSignals(
     if (brokeDown) {
       const div = divergenceOf(leave, -1);
       const li = locate(leave.endTs);
+      // 一买：向下离开段创新低（低于进入段低点）且底背驰
+      const entryStrokeDown = [...before].reverse().find(s => s.dir === -1);
+      const makesNewLow = entryStrokeDown ? leave.low < entryStrokeDown.low : false;
+      if (li >= 0 && div && makesNewLow) {
+        out.push({
+          kind: 'yimai_buy', ts: rawBars[li].ts, barIndex: li, price: rawBars[li].close,
+          pivotHigh: p.high, pivotLow: p.low, divergence: true,
+          note: `一买 下破中枢 ZD=${p.low.toFixed(2)} 创新低且底背驰`,
+        });
+        // 二买：一买后第一个向上笔、再向下笔不创新低 → 确认于第二个向下笔终点
+        const up1 = after[1], down2 = after[2];
+        if (up1?.dir === 1 && down2?.dir === -1 && down2.low > leave.low) {
+          const idx2 = locate(down2.endTs);
+          if (idx2 >= 0) out.push({
+            kind: 'ermai_buy', ts: rawBars[idx2].ts, barIndex: idx2, price: rawBars[idx2].close,
+            pivotHigh: p.high, pivotLow: p.low, divergence: false,
+            note: `二买 回抽低点 ${down2.low.toFixed(2)} 未破一买低点 ${leave.low.toFixed(2)}`,
+          });
+        }
+      }
       if (li >= 0) out.push({
         kind: 'pivot_break_down', ts: rawBars[li].ts, barIndex: li, price: rawBars[li].close,
         pivotHigh: p.high, pivotLow: p.low, divergence: div,
@@ -100,6 +120,29 @@ export function findSignals(
             kind: 'sanmai_sell', ts: rawBars[idx].ts, barIndex: idx, price: rawBars[idx].close,
             pivotHigh: p.high, pivotLow: p.low, divergence: div,
             note: `三卖 回抽高点 ${pullback.high.toFixed(2)} < ZD ${p.low.toFixed(2)}${div ? '（离开段底背驰）' : ''}`,
+          });
+        }
+      }
+    }
+    if (brokeUp) {
+      const div = divergenceOf(leave, 1);
+      const li = locate(leave.endTs);
+      // 一卖：向上离开段创新高且顶背驰
+      const entryStrokeUp = [...before].reverse().find(s => s.dir === 1);
+      const makesNewHigh = entryStrokeUp ? leave.high > entryStrokeUp.high : false;
+      if (li >= 0 && div && makesNewHigh) {
+        out.push({
+          kind: 'yimai_sell', ts: rawBars[li].ts, barIndex: li, price: rawBars[li].close,
+          pivotHigh: p.high, pivotLow: p.low, divergence: true,
+          note: `一卖 上破中枢 ZG=${p.high.toFixed(2)} 创新高且顶背驰`,
+        });
+        const down1 = after[1], up2 = after[2];
+        if (down1?.dir === -1 && up2?.dir === 1 && up2.high < leave.high) {
+          const idx2 = locate(up2.endTs);
+          if (idx2 >= 0) out.push({
+            kind: 'ermai_sell', ts: rawBars[idx2].ts, barIndex: idx2, price: rawBars[idx2].close,
+            pivotHigh: p.high, pivotLow: p.low, divergence: false,
+            note: `二卖 回抽高点 ${up2.high.toFixed(2)} 未破一卖高点 ${leave.high.toFixed(2)}`,
           });
         }
       }

@@ -53,6 +53,10 @@ export type SignalKind =
   | 'sanmai_sell'   // 三卖：向下离开中枢后回抽不回中枢
   | 'pivot_break_up'   // 中枢向上突破
   | 'pivot_break_down' // 中枢向下突破
+  | 'yimai_buy'     // 一买：向下离开段创新低且底背驰
+  | 'yimai_sell'    // 一卖：向上离开段创新高且顶背驰
+  | 'ermai_buy'     // 二买：一买后回抽不创新低
+  | 'ermai_sell';   // 二卖：一卖后回抽不创新高
 
 export interface Signal {
   kind: SignalKind;
