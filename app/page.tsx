@@ -14,7 +14,6 @@ import ChatPanel from '@/components/ChatPanel';
 const KIND_LABELS: Record<SignalKind, string> = {
   sanmai_buy: '三买', sanmai_sell: '三卖',
   pivot_break_up: '中枢上破', pivot_break_down: '中枢下破',
-  yimai_buy: '一买', yimai_sell: '一卖',
 };
 
 export interface AnalysisState {

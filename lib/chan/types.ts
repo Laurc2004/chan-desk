@@ -53,8 +53,6 @@ export type SignalKind =
   | 'sanmai_sell'   // 三卖：向下离开中枢后回抽不回中枢
   | 'pivot_break_up'   // 中枢向上突破
   | 'pivot_break_down' // 中枢向下突破
-  | 'yimai_buy'     // 一买（简化：中枢下沿新低 + 收回中枢下方沿之上）
-  | 'yimai_sell';   // 一卖（简化对称）
 
 export interface Signal {
   kind: SignalKind;
@@ -63,5 +61,7 @@ export interface Signal {
   price: number;       // 确认时收盘价
   pivotHigh: number;
   pivotLow: number;
+  /** 简化背驰标记：离开段价格创新高/新低但 MACD DIF 峰值未创新高/新低 */
+  divergence?: boolean;
   note?: string;
 }
