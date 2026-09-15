@@ -4,17 +4,16 @@
 
 - [x] 赛道分析、拿奖策略（专题奖+人气奖+高校专项三层）已与用户对齐
 - [x] 创建项目 ~/Documents/code/chan-desk（create-next-app，TS+Tailwind+App Router）
-- [x] task_plan.md / findings.md / progress.md 建立
-- [x] 缠论 TS 引擎：merge(包含处理)/fractal(分型)/stroke(笔)/pivot(中枢)/signals(买卖点) 全部完成
-- [x] 回放统计引擎：12根K线窗口收益分布 + 美股盘中/休市窗口分组统计（招牌功能）
-- [x] 真实数据验证：15m 密度可用（TSLA 11信号/NVDA 8信号 per 66天），1H 太稀疏只作辅助
-- [x] 数据刷新脚本 refresh.ts：9标的×2周期全部拉到 2026-09-15（15m 6863根/1H 1715根）
-  - 坑：Bitget granularity 参数 1H 必须大写 '1H'（'1h' 报 400171）
-  - 坑：增量拉取首拉不能带 endTime（会漏最新K线）
-- [x] UI 四大件：ChatPanel(对话+LLM解析+本地回退)/KlineChart(klinecharts v10 DataLoader+信号标注+中枢矩形)/StatsPanel(分窗口统计卡片)/DecisionPanel(采纳/忽略+理由→Supabase)
-- [x] app/api/llm/route.ts：Qwen 代理（qwen3.8-max, hackathon.bitgetops.com）
-- [x] `next build` 通过（klinecharts 需 dynamic import ssr:false，已解）
-- [x] git commit ×3
+- [x] 缠论引擎完整化（响应用户"太简化"反馈）：
+  - 笔（分型交替+间距≥5+同向合并）→ 线段（简化特征序列，反向破坏+≥3笔）
+  - 笔中枢（三笔重叠+延伸）
+  - 8 类信号：三买/三卖/中枢上破/下破 + 一买/一卖（背驰+创新低/高驱动）+ 二买/二卖（回抽不破极值）
+  - MACD(12,26,9) 背驰标注：离开段 vs 进入段 DIF 峰值对比
+- [x] 全市场大样本：15m 108 信号 / 1H 30 信号，8 类全部有真实样本
+  - 核心实测结论：三买盘中75% vs 追突破盘中14%；一卖休市100%（n=5）
+- [x] GitHub 仓库 https://github.com/Laurc2004/chan-desk 已建（public, main 分支同步）
+- [x] UI：对话/K线(信号+中枢+背驰标记)/单标的统计/全市场汇总/决策面板
+- [x] `next build` 全绿
 
 ## 待办（按排期）
 
