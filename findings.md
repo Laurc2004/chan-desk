@@ -1,12 +1,13 @@
 # Findings
 
-## Bitget rToken 数据（实测，2026-09 上旬，来自旧项目 bitget-hackathon）
+## Bitget rToken 数据（实测，2026-09-15 更新）
 
-- K线端点：`GET https://api.bitget.com/api/v2/mix/market/history-candles?symbol=TSLAUSDT&granularity=1h&endTime=...&limit=100`
-- 单次上限 100 根，按 endTime 向前翻页；1H 深度 ≈91 天、15m ≈90 天
+- K线端点：`GET https://api.bitget.com/api/v2/mix/market/history-candles?symbol=X&granularity=1H&productType=USDT-FUTURES&limit=100&endTime=...`
+- 单次上限 100 根，按 endTime 向前翻页；granularity 参数大小写敏感（'1H' 对 '1h' 报 400171）
+- 历史深度因标的而异（重要修正）：老标的 15m 可达 20100 根（≈7个月）、1H 可达 9125 根（≈14个月），如 MSTR/COIN/INTC/MRVL/MU；2026-07 新上线的标的只有 ~6968/1817 根。**不要按 90 天上限假设**
+- 增量拉取首拉不能带 endTime（会漏最新K线）
 - 公开行情无需 API Key
-- 已有缓存：~/Documents/code/bitget-hackathon/data/{SYMBOL}_{1H|15m}.json，10 标的全套（TSLA/AAPL/NVDA/MSFT/META/GOOGL/AMZN/AMD/AVGO + MSTR 需确认）
-- 注意：旧缓存截至 9 月上旬，ChanDesk 需要刷新到最新再生成静态数据
+- 标的清单：scripts/symbols.ts 用 tickers 接口按 24h 成交额 ≥50万U 过滤，当前 48 个 rToken（含 SOXL/SPCX/SKHY/SKHYNIX/ANTHROPIC/OPENAI/TRUMP/SOXS/KWEB/NVDL 等热门）
 
 ## 赛道规则要点（S2 手册，全文缓存于 ~/.hermes/cache/web/bitget-ai.gitbook.io-3621a378f5.md）
 
