@@ -7,6 +7,7 @@ import { loadBars, SYMBOLS, SYMBOL_LABELS, GRANULARITIES } from '@/lib/bitget';
 import { Signal, SignalKind } from '@/lib/chan/types';
 import KlineChart from '@/components/KlineChartNoSSR';
 import StatsPanel from '@/components/StatsPanel';
+import AggregatePanel from '@/components/AggregatePanel';
 import DecisionPanel from '@/components/DecisionPanel';
 import ChatPanel from '@/components/ChatPanel';
 
@@ -88,12 +89,15 @@ export default function Home() {
             )}
           </div>
           {state && (
-            <StatsPanel
-              stats={state.stats}
-              selectedKind={selectedKind}
-              onSelectKind={k => setSelectedKind(k)}
-              kindLabels={KIND_LABELS}
-            />
+            <>
+              <AggregatePanel gran={gran} />
+              <StatsPanel
+                stats={state.stats}
+                selectedKind={selectedKind}
+                onSelectKind={(k: SignalKind | 'all') => setSelectedKind(k)}
+                kindLabels={KIND_LABELS}
+              />
+            </>
           )}
         </section>
         {state && (
