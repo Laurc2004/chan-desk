@@ -1,0 +1,122 @@
+{
+ "NVDAUSDT": {
+  "IS": {
+   "trades": 5,
+   "win_rate": 0.8,
+   "total_pnl": 65.2,
+   "sharpe": 17.28,
+   "sortino": 207.02,
+   "max_dd": 1.35
+  },
+  "OOS": {
+   "trades": 4,
+   "win_rate": 1.0,
+   "total_pnl": 25.8,
+   "sharpe": 49.24,
+   "sortino": 0,
+   "max_dd": 0
+  }
+ },
+ "AAPLUSDT": {
+  "IS": {
+   "trades": 1,
+   "win_rate": 1.0,
+   "total_pnl": 5.92,
+   "sharpe": 0,
+   "sortino": 0,
+   "max_dd": 0
+  },
+  "OOS": {}
+ },
+ "MSFTUSDT": {
+  "IS": {
+   "trades": 2,
+   "win_rate": 0.5,
+   "total_pnl": 2.23,
+   "sharpe": 1.96,
+   "sortino": 17.7,
+   "max_dd": 5.26
+  },
+  "OOS": {
+   "trades": 4,
+   "win_rate": 0.75,
+   "total_pnl": 27.45,
+   "sharpe": 10.81,
+   "sortino": 108.96,
+   "max_dd": 2.51
+  }
+ },
+ "GOOGLUSDT": {
+  "IS": {
+   "trades": 3,
+   "win_rate": 0.6666666666666666,
+   "total_pnl": 28.36,
+   "sharpe": 11.1,
+   "sortino": 150.05,
+   "max_dd": 0.9
+  },
+  "OOS": {
+   "trades": 1,
+   "win_rate": 1.0,
+   "total_pnl": 2.84,
+   "sharpe": 0,
+   "sortino": 0,
+   "max_dd": 0
+  }
+ },
+ "AMZNUSDT": {
+  "IS": {},
+  "OOS": {
+   "trades": 2,
+   "win_rate": 0.5,
+   "total_pnl": -2.57,
+   "sharpe": -10.54,
+   "sortino": -20.38,
+   "max_dd": 2.65
+  }
+ },
+ "TSLAUSDT": {
+  "IS": {
+   "trades": 2,
+   "win_rate": 0.5,
+   "total_pnl": 3.26,
+   "sharpe": 7.56,
+   "sortino": 25.86,
+   "max_dd": 0.79
+  },
+  "OOS": {}
+ },
+ "METAUSDT": {
+  "IS": {
+   "trades": 4,
+   "win_rate": 0.75,
+   "total_pnl": 6.96,
+   "sharpe": 8.59,
+   "sortino": 27.6,
+   "max_dd": 1.9
+  },
+  "OOS": {
+   "trades": 3,
+   "win_rate": 0.3333333333333333,
+   "total_pnl": 1.75,
+   "sharpe": 2.8,
+   "sortino": 8.71,
+   "max_dd": 2.55
+  }
+ },
+ "AMDUSDT": {
+  "IS": {},
+  "OOS": {}
+ },
+ "AVGOUSDT": {
+  "IS": {
+   "trades": 4,
+   "win_rate": 0.5,
+   "total_pnl": -1.96,
+   "sharpe": -7.44,
+   "sortino": -11.88,
+   "max_dd": 2.55
+  },
+  "OOS": {}
+ }
+}
