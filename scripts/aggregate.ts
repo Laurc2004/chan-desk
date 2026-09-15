@@ -6,7 +6,7 @@ import { analyze } from '../lib/chan';
 import { replay, summarize, inUsMarketHours, Stats } from '../lib/replay/replay';
 import { RawBar, SignalKind } from '../lib/chan/types';
 
-const SYMBOLS = ['TSLAUSDT', 'AAPLUSDT', 'NVDAUSDT', 'MSFTUSDT', 'METAUSDT', 'GOOGLUSDT', 'AMZNUSDT', 'AMDUSDT', 'AVGOUSDT'];
+const SYMBOLS: string[] = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/symbols.json'), 'utf8'));
 const GRANS = ['15m', '1H'];
 
 function load(symbol: string, gran: string): RawBar[] {

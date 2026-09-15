@@ -1,6 +1,7 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnalysisState } from '@/app/page';
+import { getSymbols } from '@/lib/bitget';
 
 interface Msg { role: 'user' | 'assistant'; content: string }
 
@@ -31,6 +32,8 @@ export default function ChatPanel({ symbol, gran, state, onApplyQuery }: {
     { role: 'assistant', content: '你好，我是 ChanDesk 分析师。告诉我你的交易想法（标的/级别/信号类型），我会调出该信号在 Bitget rToken 历史上的全部触发与统计分布。最终决策由你做出。' },
   ]);
   const [input, setInput] = useState('');
+  const [symbols, setSymbols] = useState<string[]>([symbol]);
+  useEffect(() => { getSymbols().then(setSymbols); }, []);
   const [busy, setBusy] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -57,7 +60,7 @@ export default function ChatPanel({ symbol, gran, state, onApplyQuery }: {
     setMsgs(m => [...m, { role: 'user', content: q }]);
     setBusy(true);
     try {
-      const parsed = localParse(q, (state && [state.symbol]) || [symbol]);
+      const parsed = localParse(q, symbols);
       onApplyQuery(q, parsed.symbol, parsed.gran);
       const sys = `你是 ChanDesk 的缠论分析师，服务对象是用缠论交易 Bitget rToken（代币化美股，7×24交易）的中文散户。基于给定的历史信号统计回答用户问题。规则：1) 只依据提供的数据说话，数字必须来自统计上下文，不得编造；2) 胜率低于40%或盈亏比<1时明确提示风险；3) 你只能给分析，不能替用户做决定，结尾必须让用户自行判断；4) 若涉及"美股睡了rToken还开着"的休市窗口差异，要点出这是rToken独有场景。`;
       const ctx = buildContext(q);

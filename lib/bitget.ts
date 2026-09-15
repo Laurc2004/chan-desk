@@ -1,14 +1,25 @@
 // 静态 K线数据加载器（data/*.json 构建期生成，前端静态导入）
 import { RawBar } from './chan/types';
 
-export const SYMBOLS = ['TSLAUSDT', 'AAPLUSDT', 'NVDAUSDT', 'MSFTUSDT', 'METAUSDT', 'GOOGLUSDT', 'AMZNUSDT', 'AMDUSDT', 'AVGOUSDT'] as const;
-export type SymbolCode = typeof SYMBOLS[number];
 export const GRANULARITIES = ['15m', '1H'] as const;
 
-export const SYMBOL_LABELS: Record<string, string> = {
-  TSLAUSDT: '特斯拉', AAPLUSDT: '苹果', NVDAUSDT: '英伟达', MSFTUSDT: '微软',
-  METAUSDT: 'Meta', GOOGLUSDT: '谷歌', AMZNUSDT: '亚马逊', AMDUSDT: 'AMD', AVGOUSDT: '博通',
-};
+// 默认清单（构建期由 scripts/symbols.ts 生成）；运行时从 /data/symbols.json 刷新
+const DEFAULT_SYMBOLS = ['TSLAUSDT', 'AAPLUSDT', 'NVDAUSDT', 'MSFTUSDT', 'METAUSDT', 'GOOGLUSDT', 'AMZNUSDT', 'AMDUSDT', 'AVGOUSDT'];
+
+let symbolsCache: string[] | null = null;
+export async function getSymbols(): Promise<string[]> {
+  if (symbolsCache) return symbolsCache;
+  let result: string[] = DEFAULT_SYMBOLS;
+  try {
+    const res = await fetch('/data/symbols.json');
+    if (res.ok) {
+      const arr = await res.json();
+      if (Array.isArray(arr) && arr.length > 0) result = arr;
+    }
+  } catch { /* 用默认清单 */ }
+  symbolsCache = result;
+  return result;
+}
 
 export function toBars(arr: string[][]): RawBar[] {
   return arr.map(r => ({ ts: +r[0], open: +r[1], high: +r[2], low: +r[3], close: +r[4], vol: +r[5] }));

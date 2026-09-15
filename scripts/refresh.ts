@@ -1,9 +1,9 @@
-// 刷新 rToken K线数据到最新（公开REST，无需Key）
+// 刷新 rToken K线数据到最新（公开REST，无需Key）——标的清单来自 symbols.ts 筛选结果
 // npx tsx scripts/refresh.ts
 import * as fs from 'fs';
 import * as path from 'path';
 
-const SYMBOLS = ['TSLAUSDT', 'AAPLUSDT', 'NVDAUSDT', 'MSFTUSDT', 'METAUSDT', 'GOOGLUSDT', 'AMZNUSDT', 'AMDUSDT', 'AVGOUSDT'];
+const SYMBOLS: string[] = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/symbols.json'), 'utf8'));
 const GRANS = ['15m', '1H'] as const;
 const BASE = 'https://api.bitget.com/api/v2/mix/market/history-candles';
 const GRAN_MAP: Record<string, string> = { '15m': '15m', '1H': '1H' };

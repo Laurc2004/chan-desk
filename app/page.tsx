@@ -1,9 +1,9 @@
 'use client';
 // 主工作台：左对话 / 中K线+统计 / 右决策
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { analyze } from '@/lib/chan';
-import { replayAll, inUsMarketHours, ReplayStats, Outcome } from '@/lib/replay/replay';
-import { loadBars, SYMBOLS, SYMBOL_LABELS, GRANULARITIES } from '@/lib/bitget';
+import { replayAll, ReplayStats } from '@/lib/replay/replay';
+import { loadBars, getSymbols, GRANULARITIES } from '@/lib/bitget';
 import { Signal, SignalKind } from '@/lib/chan/types';
 import KlineChart from '@/components/KlineChartNoSSR';
 import StatsPanel from '@/components/StatsPanel';
@@ -17,6 +17,10 @@ const KIND_LABELS: Record<SignalKind, string> = {
   yimai_buy: '一买', yimai_sell: '一卖', ermai_buy: '二买', ermai_sell: '二卖',
 };
 
+const ENV_LABELS: Record<string, string> = {
+  uptrend: '1H上升趋势', downtrend: '1H下降趋势', range: '1H中枢震荡',
+};
+
 export interface AnalysisState {
   symbol: string;
   gran: string;
@@ -26,21 +30,34 @@ export interface AnalysisState {
 }
 
 export default function Home() {
+  const [symbols, setSymbols] = useState<string[]>(['TSLAUSDT']);
   const [symbol, setSymbol] = useState<string>('TSLAUSDT');
   const [gran, setGran] = useState<string>('15m');
   const [state, setState] = useState<AnalysisState | null>(null);
   const [selectedKind, setSelectedKind] = useState<SignalKind | 'all'>('all');
   const [loading, setLoading] = useState(false);
-  const [chatQuery, setChatQuery] = useState<string>('');
+
+  useEffect(() => { getSymbols().then(setSymbols); }, []);
 
   const runAnalysis = useCallback(async (sym: string, g: string) => {
     setLoading(true);
     try {
       const bars = await loadBars(sym, g);
-      const a = analyze(bars);
+      // 15m 时用 1H 做大级别环境；1H 时无更大数据，环境留空
+      let bigContext: Parameters<typeof analyze>[1] extends undefined ? undefined : ReturnType<typeof analyze> extends never ? never : { pivots: { high: number; low: number; endTs: number }[]; bars: { ts: number; high: number; low: number; close: number }[] } | undefined;
+      bigContext = undefined;
+      if (g === '15m') {
+        try {
+          const bigBars = await loadBars(sym, '1H');
+          const big = analyze(bigBars);
+          bigContext = { pivots: big.pivots, bars: bigBars };
+        } catch { /* 大级别数据缺失时跳过环境标注 */ }
+      }
+      const a = analyze(bars, bigContext ? { bigContext } : undefined);
       const stats = replayAll(sym, g, a.signals, bars);
       setState({ symbol: sym, gran: g, bars, signals: a.signals, stats });
-    } finally { setLoading(false); }
+    } catch { /* 标的数据缺失 */ }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { runAnalysis(symbol, gran); }, [symbol, gran, runAnalysis]);
@@ -50,7 +67,6 @@ export default function Home() {
     return selectedKind === 'all' ? state.signals : state.signals.filter(s => s.kind === selectedKind);
   }, [state, selectedKind]);
 
-  // 当前(最新)是否有未走完的同类信号线索
   const latestSignal = useMemo(() => {
     if (!state || state.signals.length === 0) return null;
     return state.signals[state.signals.length - 1];
@@ -65,7 +81,7 @@ export default function Home() {
         <div className="ml-auto flex items-center gap-2 text-sm">
           <select value={symbol} onChange={e => setSymbol(e.target.value)}
             className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1">
-            {SYMBOLS.map(s => <option key={s} value={s}>{s.replace('USDT', '')} · {SYMBOL_LABELS[s]}</option>)}
+            {symbols.map(s => <option key={s} value={s}>{s.replace('USDT', '')}</option>)}
           </select>
           <select value={gran} onChange={e => setGran(e.target.value)}
             className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1">
@@ -78,7 +94,7 @@ export default function Home() {
         <ChatPanel
           symbol={symbol} gran={gran}
           state={state}
-          onApplyQuery={(q, sym, g) => { if (sym) setSymbol(sym); if (g) setGran(g); setChatQuery(q); }}
+          onApplyQuery={(q: string, sym?: string, g?: string) => { if (sym) setSymbol(sym); if (g) setGran(g); }}
         />
         <section className="space-y-4">
           <div className="border border-zinc-800 rounded-lg overflow-hidden">
@@ -88,6 +104,12 @@ export default function Home() {
               <KlineChart bars={state.bars} signals={visibleSignals} pivots={analyze(state.bars).pivots} symbol={symbol} gran={gran} />
             )}
           </div>
+          {state && latestSignal && (latestSignal as Signal & { environment?: string }).environment && (
+            <div className="border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-400">
+              最新信号所处 1H 环境：<span className="text-sky-400">{ENV_LABELS[(latestSignal as Signal & { environment?: string }).environment!]}</span>
+              （多级别联立：15m 信号在大级别趋势中的位置决定其含义权重）
+            </div>
+          )}
           {state && (
             <>
               <AggregatePanel gran={gran} />
@@ -110,7 +132,7 @@ export default function Home() {
         )}
       </div>
       <footer className="px-6 py-3 text-xs text-zinc-500 border-t border-zinc-800">
-        数据：Bitget 公开行情（rToken 合约）· 缠论引擎 TS 实现 · AI 仅提供分析，交易决策由交易员作出
+        数据：Bitget 公开行情（rToken 合约 {symbols.length} 标的）· 缠论引擎 TS 实现 · AI 仅提供分析，交易决策由交易员作出
       </footer>
     </main>
   );
