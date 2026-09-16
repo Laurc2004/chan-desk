@@ -56,7 +56,9 @@ export type SignalKind =
   | 'yimai_buy'     // 一买：向下离开段创新低且底背驰
   | 'yimai_sell'    // 一卖：向上离开段创新高且顶背驰
   | 'ermai_buy'     // 二买：一买后回抽不创新低
-  | 'ermai_sell';   // 二卖：一卖后回抽不创新高
+  | 'ermai_sell'    // 二卖：一卖后回抽不创新高
+  | 'leimai_buy'    // 类二买(chan.py bsp2s)：二买区间内再次回抽不回突破笔终点
+  | 'leimai_sell';  // 类二卖：对称
 
 export interface Signal {
   kind: SignalKind;
@@ -67,5 +69,7 @@ export interface Signal {
   pivotLow: number;
   /** 简化背驰标记：离开段价格创新高/新低但 MACD DIF 峰值未创新高/新低 */
   divergence?: boolean;
+  /** chan.py 精髓：二买回抽幅度比 retrace_rate = 回抽笔幅度/突破笔幅度（越小越强，chan.py 默认阈值≤0.618） */
+  retraceRate?: number;
   note?: string;
 }

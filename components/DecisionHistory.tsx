@@ -15,7 +15,7 @@ interface DecisionRow {
 
 const KIND_LABELS: Record<string, string> = {
   sanmai_buy: '三买', sanmai_sell: '三卖', pivot_break_up: '中枢上破', pivot_break_down: '中枢下破',
-  yimai_buy: '一买', yimai_sell: '一卖', ermai_buy: '二买', ermai_sell: '二卖',
+  yimai_buy: '一买', yimai_sell: '一卖', ermai_buy: '二买', ermai_sell: '二卖', leimai_buy: '类二买', leimai_sell: '类二卖',
 };
 
 export function getSessionId(): string {

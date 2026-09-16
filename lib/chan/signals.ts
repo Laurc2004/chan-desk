@@ -81,6 +81,27 @@ export function findSignals(
             pivotHigh: p.high, pivotLow: p.low, divergence: div,
             note: `三买 回调低点 ${pullback.low.toFixed(2)} > ZG ${p.high.toFixed(2)}${div ? '（离开段顶背驰）' : ''}`,
           });
+          // 类二买（chan.py bsp2s 实战化）：三买确认后，后续每次回踩守住 ZG 即一次低吸确认。
+          // chan.py 用「不回突破笔终点 + 区间重叠」双重约束；这里 ZG 即防守线（跌破即中枢失败）。
+          // 约束：幅度须 < 离开笔（排除大级别独立下跌），且保留三买后前 5 次回踩。
+          const amp = leave.high - leave.low;
+          let emitted = 0;
+          for (let bi = 3; bi < after.length && emitted < 5; bi += 2) {
+            const downN = after[bi];
+            if (downN?.dir !== -1) break;
+            if (downN.low <= p.high) break;                 // 跌回中枢，类二买失败
+            if (downN.high - downN.low >= amp) break;       // 独立大级别下跌，不是回抽
+            const idxN = locate(downN.endTs);
+            if (idxN >= 0) {
+              const rr = (leave.high - downN.low) / amp;
+              out.push({
+                kind: 'leimai_buy', ts: rawBars[idxN].ts, barIndex: idxN, price: rawBars[idxN].close,
+                pivotHigh: p.high, pivotLow: p.low, divergence: div, retraceRate: rr,
+                note: `类二买 第${emitted + 2}次回踩 ${downN.low.toFixed(2)} 守住 ZG=${p.high.toFixed(2)} · 回抽比 ${(rr * 100).toFixed(0)}%`,
+              });
+              emitted++;
+            }
+          }
         }
       }
     }
@@ -97,14 +118,41 @@ export function findSignals(
           note: `一买 下破中枢 ZD=${p.low.toFixed(2)} 创新低且底背驰`,
         });
         // 二买：一买后第一个向上笔、再向下笔不创新低 → 确认于第二个向下笔终点
+        // chan.py 精髓：retrace_rate = 回抽笔幅度 / 突破笔幅度，越小越强（默认阈值 ≤0.618 标记强信号）
         const up1 = after[1], down2 = after[2];
         if (up1?.dir === 1 && down2?.dir === -1 && down2.low > leave.low) {
           const idx2 = locate(down2.endTs);
-          if (idx2 >= 0) out.push({
-            kind: 'ermai_buy', ts: rawBars[idx2].ts, barIndex: idx2, price: rawBars[idx2].close,
-            pivotHigh: p.high, pivotLow: p.low, divergence: false,
-            note: `二买 回抽低点 ${down2.low.toFixed(2)} 未破一买低点 ${leave.low.toFixed(2)}`,
-          });
+          if (idx2 >= 0) {
+            const breakAmp = up1.high - up1.low;
+            const retraceAmp = up1.high - down2.low;
+            const retraceRate = breakAmp > 0 ? retraceAmp / breakAmp : 1;
+            out.push({
+              kind: 'ermai_buy', ts: rawBars[idx2].ts, barIndex: idx2, price: rawBars[idx2].close,
+              pivotHigh: p.high, pivotLow: p.low, divergence: false, retraceRate,
+              note: `二买 回抽低点 ${down2.low.toFixed(2)} 未破一买低点 ${leave.low.toFixed(2)} · 回抽比 ${(retraceRate * 100).toFixed(0)}%${retraceRate <= 0.618 ? '（强）' : '（弱）'}`,
+            });
+            // 类二买（chan.py bsp2s）：二买之后区间内再次回抽不回突破笔（up1）终点
+            let prevLow = down2.low;
+            let prevHigh = up1.high;
+            for (let bi = 3; bi + 1 < after.length; bi += 2) {
+              const downN = after[bi];
+              if (downN?.dir !== -1) break;
+              // 区间需与 [prevLow, prevHigh] 有重叠（chan.py has_overlap 约束）
+              if (downN.high < prevLow || downN.low > prevHigh) break;
+              if (downN.low < up1.low) break; // 跌破突破笔起点，类二买失败
+              const idxN = locate(downN.endTs);
+              if (idxN >= 0) {
+                const rr = breakAmp > 0 ? (up1.high - downN.low) / breakAmp : 1;
+                out.push({
+                  kind: 'leimai_buy', ts: rawBars[idxN].ts, barIndex: idxN, price: rawBars[idxN].close,
+                  pivotHigh: p.high, pivotLow: p.low, divergence: false, retraceRate: rr,
+                  note: `类二买 第${(bi - 1) / 2}次回抽 ${downN.low.toFixed(2)} 未破突破笔 · 回抽比 ${(rr * 100).toFixed(0)}%`,
+                });
+              }
+              prevLow = Math.max(prevLow, downN.low);
+              prevHigh = Math.min(prevHigh, downN.high);
+            }
+          }
         }
       }
       if (li >= 0) out.push({
@@ -121,6 +169,25 @@ export function findSignals(
             pivotHigh: p.high, pivotLow: p.low, divergence: div,
             note: `三卖 回抽高点 ${pullback.high.toFixed(2)} < ZD ${p.low.toFixed(2)}${div ? '（离开段底背驰）' : ''}`,
           });
+          // 类二卖（对称）：三卖确认后每次回抽压在 ZD 下即一次确认
+          const ampS = leave.high - leave.low;
+          let emittedS = 0;
+          for (let bi = 3; bi < after.length && emittedS < 5; bi += 2) {
+            const upN = after[bi];
+            if (upN?.dir !== 1) break;
+            if (upN.high >= p.low) break;
+            if (upN.high - upN.low >= ampS) break;
+            const idxN = locate(upN.endTs);
+            if (idxN >= 0) {
+              const rr = (upN.high - leave.low) / ampS;
+              out.push({
+                kind: 'leimai_sell', ts: rawBars[idxN].ts, barIndex: idxN, price: rawBars[idxN].close,
+                pivotHigh: p.high, pivotLow: p.low, divergence: div, retraceRate: rr,
+                note: `类二卖 第${emittedS + 2}次回抽 ${upN.high.toFixed(2)} 压在 ZD=${p.low.toFixed(2)} 下 · 回抽比 ${(rr * 100).toFixed(0)}%`,
+              });
+              emittedS++;
+            }
+          }
         }
       }
     }
@@ -139,11 +206,36 @@ export function findSignals(
         const down1 = after[1], up2 = after[2];
         if (down1?.dir === -1 && up2?.dir === 1 && up2.high < leave.high) {
           const idx2 = locate(up2.endTs);
-          if (idx2 >= 0) out.push({
-            kind: 'ermai_sell', ts: rawBars[idx2].ts, barIndex: idx2, price: rawBars[idx2].close,
-            pivotHigh: p.high, pivotLow: p.low, divergence: false,
-            note: `二卖 回抽高点 ${up2.high.toFixed(2)} 未破一卖高点 ${leave.high.toFixed(2)}`,
-          });
+          if (idx2 >= 0) {
+            const breakAmp = down1.high - down1.low;
+            const retraceAmp = up2.high - down1.low;
+            const retraceRate = breakAmp > 0 ? retraceAmp / breakAmp : 1;
+            out.push({
+              kind: 'ermai_sell', ts: rawBars[idx2].ts, barIndex: idx2, price: rawBars[idx2].close,
+              pivotHigh: p.high, pivotLow: p.low, divergence: false, retraceRate,
+              note: `二卖 回抽高点 ${up2.high.toFixed(2)} 未破一卖高点 ${leave.high.toFixed(2)} · 回抽比 ${(retraceRate * 100).toFixed(0)}%${retraceRate <= 0.618 ? '（强）' : '（弱）'}`,
+            });
+            // 类二卖（bsp2s 对称）
+            let prevLow = down1.low;
+            let prevHigh = up2.high;
+            for (let bi = 3; bi + 1 < after.length; bi += 2) {
+              const upN = after[bi];
+              if (upN?.dir !== 1) break;
+              if (upN.high < prevLow || upN.low > prevHigh) break;
+              if (upN.high > down1.high) break;
+              const idxN = locate(upN.endTs);
+              if (idxN >= 0) {
+                const rr = breakAmp > 0 ? (upN.high - down1.low) / breakAmp : 1;
+                out.push({
+                  kind: 'leimai_sell', ts: rawBars[idxN].ts, barIndex: idxN, price: rawBars[idxN].close,
+                  pivotHigh: p.high, pivotLow: p.low, divergence: false, retraceRate: rr,
+                  note: `类二卖 第${(bi - 1) / 2}次回抽 ${upN.high.toFixed(2)} 未破突破笔 · 回抽比 ${(rr * 100).toFixed(0)}%`,
+                });
+              }
+              prevLow = Math.max(prevLow, upN.low);
+              prevHigh = Math.min(prevHigh, upN.high);
+            }
+          }
         }
       }
     }
