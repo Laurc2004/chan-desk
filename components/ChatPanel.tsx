@@ -123,7 +123,7 @@ export default function ChatPanel({ symbol, gran, state, onApplyQuery }: {
 
   return (
     <section className="border border-zinc-800 rounded-lg flex flex-col h-[560px]">
-      <div className="px-3 py-2 border-b border-zinc-800 text-sm font-semibold text-zinc-300">投研对话</div>
+      <div className="px-3 py-2 border-b border-zinc-800 text-sm font-semibold text-zinc-200 flex items-center gap-2"><span>💬 投研对话</span><span className="text-[11px] font-normal text-zinc-500">Powered by Qwen</span></div>
       <div ref={scroller} className="flex-1 overflow-y-auto p-3 space-y-2 text-sm">
         {msgs.map((m, i) => (
           <div key={i} className={`rounded-lg p-2 whitespace-pre-wrap leading-relaxed ${m.role === 'user' ? 'bg-sky-950/60 ml-6' : 'bg-zinc-900/70 mr-2'}`}>
@@ -132,7 +132,7 @@ export default function ChatPanel({ symbol, gran, state, onApplyQuery }: {
         ))}
         {busy && <div className="text-zinc-500 text-xs">分析师检索历史信号中…</div>}
       </div>
-      {msgs.length <= 1 && (
+      {(msgs.length <= 2) && (
         <div className="px-3 pb-2 space-y-1">
           {SUGGESTIONS.map(s => (
             <button key={s} onClick={() => send(s)} className="block w-full text-left text-xs text-zinc-400 hover:text-sky-400 border border-zinc-800 rounded px-2 py-1 truncate">{s}</button>

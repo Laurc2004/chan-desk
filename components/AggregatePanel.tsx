@@ -33,7 +33,7 @@ export default function AggregatePanel({ gran }: { gran: string }) {
   return (
     <div className="border border-zinc-800 rounded-lg p-4 space-y-2">
       <h2 className="text-sm font-semibold text-zinc-300">
-        全市场汇总 · 9 标的 × {data.dateRange[0]} → {data.dateRange[1]}
+        🌐 全市场大样本 ·  {data.symbols.length} 标的 × {data.dateRange[0]} → {data.dateRange[1]}
       </h2>
       <div className="grid grid-cols-[88px_1fr_1fr_1fr_1fr] text-xs text-zinc-500 pb-1 border-b border-zinc-800">
         <span>信号</span><span>样本</span><span>盘中胜率/中位</span><span>休市胜率/中位</span><span>盈亏比(盘/休)</span>

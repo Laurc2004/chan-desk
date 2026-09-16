@@ -32,7 +32,8 @@ export default function StatsPanel({ stats, selectedKind, onSelectKind, kindLabe
   return (
     <div className="border border-zinc-800 rounded-lg p-4 space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
-        <h2 className="text-sm font-semibold text-zinc-300">历史信号回放 · 决策压力测试</h2>
+        <h2 className="text-sm font-semibold text-zinc-200">📊 本标的信号回放 · 决策压力测试</h2>
+        <span className="text-[11px] text-zinc-500">点信号类型可筛选K线标注</span>
         <div className="ml-auto flex gap-1 text-xs">
           <button onClick={() => onSelectKind('all')}
             className={`px-2 py-0.5 rounded border ${selectedKind === 'all' ? 'border-sky-500 text-sky-400' : 'border-zinc-700 text-zinc-400'}`}>全部</button>
@@ -56,7 +57,7 @@ export default function StatsPanel({ stats, selectedKind, onSelectKind, kindLabe
         ))}
       </div>
       <p className="text-[11px] text-zinc-600">
-        收益按信号方向计算（买类信号看涨、卖类看跌），含未计手续费的原始价差；样本量为该标的该周期全部历史触发。
+        收益按信号方向计算（买类看涨、卖类看跌），12 根K线窗口，未计手续费。<span className="text-zinc-400">美股盘中 vs 休市窗口（rToken 独有交易时段）分开统计——这是本产品的核心视角。</span>
       </p>
     </div>
   );

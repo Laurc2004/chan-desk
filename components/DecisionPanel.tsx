@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Signal } from '@/lib/chan/types';
 import { ReplayStats, Outcome, inUsMarketHours } from '@/lib/replay/replay';
 import { createClient } from '@supabase/supabase-js';
+import DecisionHistory, { getSessionId } from './DecisionHistory';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -21,6 +22,7 @@ export default function DecisionPanel({ symbol, gran, latestSignal, stats, outco
   const [decision, setDecision] = useState<'adopt' | 'ignore' | null>(null);
   const [reason, setReason] = useState('');
   const [saved, setSaved] = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
 
   const summary = useMemo(() => {
     if (!stats) return null;
@@ -36,12 +38,16 @@ export default function DecisionPanel({ symbol, gran, latestSignal, stats, outco
     if (!db) { setSaved(true); return; }
     try {
       await db.from('decisions').insert({
+        session_id: getSessionId(),
         symbol, granularity: gran,
         signal_kind: latestSignal?.kind ?? null,
         signal_ts: latestSignal?.ts ?? null,
         decision: d, reason,
+        entry_price: latestSignal?.price ?? null,
+        stats_snapshot: stats ? { inHours: stats.byWindow.inHours, offHours: stats.byWindow.offHours } : null,
       });
       setSaved(true);
+      setHistoryKey(k => k + 1);
     } catch { setSaved(true); /* 本地模式也放行 */ }
   }
 
@@ -73,7 +79,7 @@ export default function DecisionPanel({ symbol, gran, latestSignal, stats, outco
   return (
     <aside className="border border-zinc-800 rounded-lg p-4 space-y-3 text-sm">
       <div>
-        <h2 className="font-semibold text-zinc-200">最新信号 · 决策</h2>
+        <h2 className="font-semibold text-zinc-100">⚖️ 最新信号 · 你来决策</h2>
         <div className="mt-1 text-xs text-zinc-400 leading-relaxed">
           {new Date(latestSignal.ts).toLocaleString('zh-CN', { timeZone: 'America/New_York', hour12: false })} (ET)
           <br />{latestSignal.note}
@@ -112,7 +118,7 @@ export default function DecisionPanel({ symbol, gran, latestSignal, stats, outco
             <button onClick={() => reason.trim() && submit('ignore')} disabled={!reason.trim()}
               className="bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 rounded py-2 font-medium">忽略</button>
           </div>
-          <p className="text-[11px] text-zinc-600">AI 只提供分析。采纳或忽略由你决定——这是 ChanDesk 的边界。</p>
+          <p className="text-[11px] text-zinc-500 border-t border-zinc-800 pt-2 mt-2">🔒 AI 只提供分析。采纳或忽略由你决定——这是 ChanDesk 的人机边界。</p>
         </>
       ) : (
         <div className="space-y-1">
@@ -120,7 +126,8 @@ export default function DecisionPanel({ symbol, gran, latestSignal, stats, outco
             已记录：{decision === 'adopt' ? '采纳' : '忽略'} {saved && '✓'}
           </div>
           <p className="text-xs text-zinc-500">理由：{reason}</p>
-          <p className="text-[11px] text-zinc-600">决策已入档案，可在档案页回看这次判断的对错。</p>
+          <p className="text-[11px] text-zinc-600">决策已入档案。</p>
+          <DecisionHistory refreshKey={historyKey} />
         </div>
       )}
     </aside>
