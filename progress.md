@@ -24,10 +24,19 @@
   - 注意：qwen3.8-max 是 reasoning 模型，首响应 ~71s（dev 日志 POST /api/llm 200 in 71s）。Vercel maxDuration 已设 60，可能需要调到更长或前端加"思考中"提示
 - [x] 静态数据全部 200（K线/汇总/symbols）
 
+## Session 2026-09-15（D3 完成）
+
+- [x] 流式 LLM：/api/llm 改 SSE 透传，首字延迟 71s → 7s；ChatPanel 边收边渲染
+- [x] Vercel 生产部署：https://chan-desk-9lkhid1rz-liurc2004.vercel.app（SSO protection 已关，公开可访问；QWEN_API_KEY 已配 production env）
+  - 验证：home 200 / K线 JSON 200 / aggregate 200 / llm stream 200 / skills 200
+- [x] bitget-signal Skill 接入：/api/skills 是官方公共 MCP datahub（datahub.noxiaohao.com/mcp）的客户端
+  - technical_analysis full_analysis 实测可用（RSI/MACD/布林/MA/ATR/支撑压力，真实数据）→ DecisionPanel 技术面卡片
+  - sentiment_index / derivatives_sentiment / news_feed / tradfi_news / macro 上游当前返回空 error → 代码已接入但优雅降级显示 null（诚实集成）
+  - MCP 会话缓存（module-level session id），5min 客户端缓存
+- 全部已 commit + push + 生产部署验证
+
 ## 待办
 
-- [ ] /api/llm maxDuration 加大 + 前端等待提示优化（71s 首响应）
-- [ ] 部署 Vercel（QWEN_API_KEY 配到环境变量）
-- [ ] bitget-signal Skill 接入
-- [ ] 演示录屏
-- [ ] 表单六段说明
+- [ ] 演示录屏（D5）
+- [ ] 表单六段说明（D6）
+- [ ] 用户侧：X 首帖、TG 群
