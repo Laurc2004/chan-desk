@@ -105,7 +105,7 @@ export default function KlineChart({ bars, signals, pivots, symbol, gran }: {
         });
       },
     });
-    chart.setSymbol({ symbol: `${symbol.replace('USDT', '')}/USDT` });
+    chart.setSymbol({ ticker: symbol.replace('USDT', ''), symbol: `${symbol.replace('USDT', '')}/USDT`, pricePrecision: 2 } as never);
     chart.setPeriod(GRAN_PERIOD[gran] ?? { span: 1, type: 'hour' });
 
     const onResize = () => chart.resize();

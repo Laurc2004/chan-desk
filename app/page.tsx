@@ -31,18 +31,12 @@ export interface AnalysisState {
   stats: ReplayStats[];
 }
 
-// 前端轻量增量刷新：直接打 Bitget 公开 REST 拉最新 K 线（浏览器侧，无需后端）
+// 前端轻量增量刷新：经本站 /api/bars 代理拉 Bitget 最新K线（浏览器直连 Bitget 有 CORS/网络问题）
 async function fetchRecentBars(sym: string, g: string, sinceTs: number): Promise<{ ts: number; open: number; high: number; low: number; close: number; vol: number }[]> {
-  const gran = g === '1H' ? '1H' : '15m';
-  const url = `https://api.bitget.com/api/v2/mix/market/history-candles?symbol=${sym}&granularity=${gran}&productType=USDT-FUTURES&limit=100`;
   try {
-    const res = await fetch(url);
+    const res = await fetch(`/api/bars?symbol=${sym}&gran=${g}&since=${sinceTs}`);
     const json = await res.json();
-    if (json.code !== '00000' || !Array.isArray(json.data)) return [];
-    return json.data
-      .map((r: string[]) => ({ ts: +r[0], open: +r[1], high: +r[2], low: +r[3], close: +r[4], vol: +r[5] }))
-      .filter((b: { ts: number }) => b.ts > sinceTs)
-      .sort((a: { ts: number }, b: { ts: number }) => a.ts - b.ts);
+    return Array.isArray(json.bars) ? json.bars : [];
   } catch { return []; }
 }
 
@@ -145,8 +139,8 @@ export default function Home() {
           <span className="text-[11px] text-[var(--fg-2)]">周期</span>
           <Select value={gran} options={GRANULARITIES as unknown as string[]} onChange={setGran} width={72} />
           {lastUpdate && (
-            <span className="text-[11px] text-[var(--fg-2)] num ml-1 hidden lg:inline" title="每 60s 自动拉取 Bitget 最新K线">
-              {refreshing ? '⟳ 刷新中' : '⟳'} {new Date(lastUpdate).toLocaleTimeString('zh-CN', { hour12: false })}
+            <span className="text-[11px] text-[var(--fg-2)] num ml-1 hidden lg:inline" title="每 60s 经本站代理自动拉取 Bitget 最新K线">
+              {refreshing ? '⟳ 刷新中…' : `⟳ ${new Date(lastUpdate).toLocaleTimeString('zh-CN', { hour12: false })}`}
             </span>
           )}
         </div>
