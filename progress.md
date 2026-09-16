@@ -40,3 +40,11 @@
 - [ ] 演示录屏（D5）
 - [ ] 表单六段说明（D6）
 - [ ] 用户侧：X 首帖、TG 群
+
+## 2026-09-16 上午（D3/D4 临界点）
+- 修 K线不显示（P0）：klinecharts v10 必须 setSymbol+setPeriod 触发 DataLoader；中枢矩形改自定义 pivotRect overlay。headless 截图+像素验证（绿烛3661/红烛1768）。
+- UI 重做：GuideBanner 四步引导（可收起+localStorage）、K线状态栏（信号数/图例/操作提示）、面板图标、建议问题常驻。
+- /api/skills 30s→1.2s（9s 超时 + 5min 服务端缓存+Cache-Control）。
+- Supabase 决策档案全链路打通：decisions 表（schema.sql 入库）、session_id+stats_snapshot、DecisionHistory 右栏内嵌。REST 插入/查询/清理均实测 200/204。
+- 生产部署：https://chan-desk-gunrfsqm9-liurc2004.vercel.app 全绿（home/kline/agg/skills 200，HTML 含「使用指南」）。Vercel env: QWEN_API_KEY/QWEN_MODEL/NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_ANON_KEY（加密）。
+- commit 900220b 已推 main。
