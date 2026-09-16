@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Signal } from '@/lib/chan/types';
 import { ReplayStats, Outcome, inUsMarketHours } from '@/lib/replay/replay';
 import { createClient } from '@supabase/supabase-js';
@@ -45,10 +45,25 @@ export default function DecisionPanel({ symbol, gran, latestSignal, stats, outco
     } catch { setSaved(true); /* 本地模式也放行 */ }
   }
 
+  const [skills, setSkills] = useState<Record<string, any> | null>(null);
+  useEffect(() => {
+    setSkills(null);
+    fetch(`/api/skills?symbol=${symbol}`).then(r => r.ok ? r.json() : null).then(setSkills).catch(() => setSkills(null));
+  }, [symbol]);
+
+  const ta = skills?.technicalAnalysis as { rsi?: { rsi: number; signal: string }; macd?: { cross: string }; verdict?: string; bull_signals?: string[]; bear_signals?: string[] } | null | undefined;
+
   if (!latestSignal) {
     return (
-      <aside className="border border-zinc-800 rounded-lg p-4 text-sm text-zinc-500">
+      <aside className="border border-zinc-800 rounded-lg p-4 text-sm text-zinc-500 space-y-3">
         暂无最新信号。切换标的/周期，或等待回放引擎识别新结构。
+        {ta && (
+          <div className="bg-zinc-900/60 rounded p-2 text-xs text-zinc-400">
+            <div className="text-zinc-300 mb-1">bitget-signal 技术面（{symbol.replace('USDT','')}）</div>
+            RSI {ta.rsi?.rsi?.toFixed(1) ?? '—'} · MACD {ta.macd?.cross ?? '—'}
+            {ta.verdict && <div className="mt-1">{ta.verdict}</div>}
+          </div>
+        )}
       </aside>
     );
   }
@@ -65,6 +80,15 @@ export default function DecisionPanel({ symbol, gran, latestSignal, stats, outco
           <br />触发窗口：<span className={inHours ? 'text-sky-400' : 'text-amber-400'}>{inHours ? '美股盘中' : '休市窗口（rToken 独有）'}</span>
         </div>
       </div>
+
+      {ta && (
+        <div className="bg-zinc-900/60 rounded p-2 text-xs text-zinc-400 leading-relaxed">
+          <span className="text-zinc-300">bitget-signal 技术面：</span>
+          RSI {ta.rsi?.rsi?.toFixed(1) ?? '—'}（{ta.rsi?.signal ?? '—'}）· MACD {ta.macd?.cross ?? '—'}
+          {ta.verdict && <> · {ta.verdict}</>}
+          {skills?.fearGreed && <div>市场情绪指数可用</div>}
+        </div>
+      )}
 
       {summary && (
         <div className="bg-zinc-900/60 rounded p-2 text-xs leading-relaxed">
