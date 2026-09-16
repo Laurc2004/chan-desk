@@ -1,6 +1,6 @@
 'use client';
-// 主工作台：顶部引导 → 左对话 / 中K线+统计 / 右决策
-import { useCallback, useEffect, useMemo, useState } from 'react';
+// 主工作台：顶部引导 → 左对话 / 中K线+统计 / 右决策（OKX 交互 + Bitget 主题）
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { analyze } from '@/lib/chan';
 import { replayAll, ReplayStats } from '@/lib/replay/replay';
 import { loadBars, getSymbols, GRANULARITIES } from '@/lib/bitget';
@@ -11,6 +11,7 @@ import AggregatePanel from '@/components/AggregatePanel';
 import DecisionPanel from '@/components/DecisionPanel';
 import ChatPanel from '@/components/ChatPanel';
 import GuideBanner from '@/components/GuideBanner';
+import { Select } from '@/components/Select';
 
 const KIND_LABELS: Record<SignalKind, string> = {
   sanmai_buy: '三买', sanmai_sell: '三卖',
@@ -30,6 +31,23 @@ export interface AnalysisState {
   stats: ReplayStats[];
 }
 
+// 前端轻量增量刷新：直接打 Bitget 公开 REST 拉最新 K 线（浏览器侧，无需后端）
+async function fetchRecentBars(sym: string, g: string, sinceTs: number): Promise<{ ts: number; open: number; high: number; low: number; close: number; vol: number }[]> {
+  const gran = g === '1H' ? '1H' : '15m';
+  const url = `https://api.bitget.com/api/v2/mix/market/history-candles?symbol=${sym}&granularity=${gran}&productType=USDT-FUTURES&limit=100`;
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.code !== '00000' || !Array.isArray(json.data)) return [];
+    return json.data
+      .map((r: string[]) => ({ ts: +r[0], open: +r[1], high: +r[2], low: +r[3], close: +r[4], vol: +r[5] }))
+      .filter((b: { ts: number }) => b.ts > sinceTs)
+      .sort((a: { ts: number }, b: { ts: number }) => a.ts - b.ts);
+  } catch { return []; }
+}
+
+const REFRESH_MS = 60_000; // 每 60s 轮询一次新 K 线
+
 export default function Home() {
   const [symbols, setSymbols] = useState<string[]>(['TSLAUSDT']);
   const [symbol, setSymbol] = useState<string>('TSLAUSDT');
@@ -37,6 +55,11 @@ export default function Home() {
   const [state, setState] = useState<AnalysisState | null>(null);
   const [selectedKind, setSelectedKind] = useState<SignalKind | 'all'>('all');
   const [loading, setLoading] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [livePrice, setLivePrice] = useState<number | null>(null);
+  const stateRef = useRef<AnalysisState | null>(null);
+  stateRef.current = state;
 
   useEffect(() => { getSymbols().then(setSymbols); }, []);
 
@@ -55,11 +78,38 @@ export default function Home() {
       const a = analyze(bars, bigContext ? { bigContext } : undefined);
       const stats = replayAll(sym, g, a.signals, bars);
       setState({ symbol: sym, gran: g, bars, signals: a.signals, stats });
+      setLastUpdate(Date.now());
+      setLivePrice(bars[bars.length - 1]?.close ?? null);
     } catch { /* 标的数据缺失 */ }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { runAnalysis(symbol, gran); }, [symbol, gran, runAnalysis]);
+
+  // 定时增量刷新：拉最新 K 线合并后重算
+  useEffect(() => {
+    const id = setInterval(async () => {
+      const cur = stateRef.current;
+      if (!cur || cur.symbol !== symbol || cur.gran !== gran) return;
+      const lastTs = cur.bars[cur.bars.length - 1].ts;
+      const fresh = await fetchRecentBars(symbol, gran, lastTs);
+      setRefreshing(true);
+      try {
+        let bars = cur.bars;
+        if (fresh.length > 0) {
+          bars = [...cur.bars, ...fresh];
+        }
+        // 无论有没有新K线，都用最新价刷新（轮询的 ticker 也带价格）
+        const a = analyze(bars);
+        const stats = replayAll(symbol, gran, a.signals, bars);
+        setState({ symbol, gran, bars, signals: a.signals, stats });
+        setLivePrice(bars[bars.length - 1]?.close ?? null);
+        setLastUpdate(Date.now());
+      } catch { /* 保持旧数据 */ }
+      finally { setRefreshing(false); }
+    }, REFRESH_MS);
+    return () => clearInterval(id);
+  }, [symbol, gran]);
 
   const visibleSignals = useMemo(() => {
     if (!state) return [];
@@ -74,63 +124,76 @@ export default function Home() {
   const signalCount = state?.signals.length ?? 0;
 
   return (
-    <main className="min-h-screen bg-[#0b0e14] text-zinc-100">
-      {/* 顶栏 */}
-      <header className="border-b border-zinc-800 px-6 py-3 flex items-center gap-4 flex-wrap sticky top-0 bg-[#0b0e14]/95 backdrop-blur z-20">
-        <h1 className="text-lg font-bold tracking-wide">
-          ChanDesk <span className="text-sky-400">缠论决策压力测试台</span>
-        </h1>
-        <span className="hidden md:inline text-xs text-zinc-500 border border-zinc-800 rounded px-1.5 py-0.5">Bitget rToken · 7×24</span>
-        <div className="ml-auto flex items-center gap-2 text-sm">
-          <span className="text-xs text-zinc-500">标的</span>
-          <select value={symbol} onChange={e => setSymbol(e.target.value)}
-            className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 hover:border-zinc-500">
-            {symbols.map(s => <option key={s} value={s}>{s.replace('USDT', '')}</option>)}
-          </select>
-          <span className="text-xs text-zinc-500">周期</span>
-          <select value={gran} onChange={e => setGran(e.target.value)}
-            className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 hover:border-zinc-500">
-            {GRANULARITIES.map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
+    <main className="min-h-screen" style={{ background: 'var(--bg-0)', color: 'var(--fg-0)' }}>
+      {/* ===== 顶栏 ===== */}
+      <header className="sticky top-0 z-30 border-b border-[var(--line)] px-5 py-2.5 flex items-center gap-4 flex-wrap"
+        style={{ background: 'rgba(10,14,23,.92)', backdropFilter: 'blur(8px)' }}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-sm"
+            style={{ background: 'var(--brand)', color: '#06121a' }}>缠</div>
+          <h1 className="text-[15px] font-bold tracking-wide">
+            ChanDesk <span className="text-[var(--brand)] font-semibold">缠论决策压力测试台</span>
+          </h1>
+        </div>
+        <span className="hidden md:inline text-[11px] text-[var(--fg-2)] border border-[var(--line)] rounded px-1.5 py-0.5">
+          Bitget rToken · 7×24
+        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="text-[11px] text-[var(--fg-2)]">标的</span>
+          <Select value={symbol.replace('USDT', '')} options={symbols.map(s => s.replace('USDT', ''))}
+            onChange={v => setSymbol(v + 'USDT')} width={110} searchable />
+          <span className="text-[11px] text-[var(--fg-2)]">周期</span>
+          <Select value={gran} options={GRANULARITIES as unknown as string[]} onChange={setGran} width={72} />
+          {lastUpdate && (
+            <span className="text-[11px] text-[var(--fg-2)] num ml-1 hidden lg:inline" title="每 60s 自动拉取 Bitget 最新K线">
+              {refreshing ? '⟳ 刷新中' : '⟳'} {new Date(lastUpdate).toLocaleTimeString('zh-CN', { hour12: false })}
+            </span>
+          )}
         </div>
       </header>
 
       <div className="max-w-[1600px] mx-auto px-4 py-3 space-y-3">
         <GuideBanner />
 
-        <div className="grid grid-cols-1 xl:grid-cols-[360px_1fr_330px] gap-3">
-          {/* 左：对话 */}
+        <div className="grid grid-cols-1 xl:grid-cols-[370px_1fr_340px] gap-3">
+          {/* ===== 左：对话 ===== */}
           <ChatPanel symbol={symbol} gran={gran} state={state}
             onApplyQuery={(q: string, sym?: string, g?: string) => { if (sym && sym !== symbol) setSymbol(sym); if (g && g !== gran) setGran(g); }} />
 
-          {/* 中：K线 + 统计 */}
+          {/* ===== 中：K线 + 统计 ===== */}
           <section className="space-y-3 min-w-0">
-            <div className="border border-zinc-800 rounded-lg overflow-hidden">
-              <div className="px-3 py-2 border-b border-zinc-800 flex items-center gap-3 text-xs text-zinc-400 bg-zinc-900/40">
-                <span className="font-semibold text-zinc-200 text-sm">{symbol.replace('USDT', '')} · {gran}</span>
-                {loading ? <span className="text-sky-400">计算缠论结构中…</span> : (
+            <div className="panel overflow-hidden">
+              {/* K线工具条 */}
+              <div className="panel-hd">
+                <span className="text-[15px] font-bold num">{symbol.replace('USDT', '')}</span>
+                <span className="text-[var(--fg-2)] text-[12px]">{gran}</span>
+                {livePrice !== null && (
+                  <span className="num text-[14px] font-semibold text-[var(--brand)]">{livePrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                )}
+                {loading ? <span className="text-[var(--brand)] text-[11px] ml-2">计算缠论结构中…</span> : (
                   <>
-                    <span>{signalCount} 个信号</span>
-                    <span className="text-zinc-600">|</span>
-                    <span className="text-emerald-400">▲ 买类标注</span>
-                    <span className="text-red-400">▼ 卖类标注</span>
-                    <span className="text-sky-400">⊞ 中枢区间</span>
-                    <span className="ml-auto text-zinc-500 hidden md:inline">滚轮缩放 · 拖拽平移</span>
+                    <span className="text-[11px] text-[var(--fg-2)] ml-2">{signalCount} 信号</span>
+                    <span className="hidden md:flex items-center gap-3 text-[11px] ml-auto">
+                      <span className="text-[var(--up)]">▲ 买</span>
+                      <span className="text-[var(--down)]">▼ 卖</span>
+                      <span className="text-[var(--brand)]">⊞ 中枢</span>
+                      <span className="text-[var(--fg-2)] hidden lg:inline">滚轮缩放 · 拖拽平移</span>
+                    </span>
                   </>
                 )}
               </div>
               {loading || !state ? (
-                <div className="h-[440px] flex items-center justify-center text-zinc-500 text-sm">加载 K 线与缠论结构中…</div>
+                <div className="h-[440px] flex items-center justify-center text-[var(--fg-2)] text-[13px]">加载 K 线与缠论结构中…</div>
               ) : (
                 <KlineChart bars={state.bars} signals={visibleSignals} pivots={analyze(state.bars).pivots} symbol={symbol} gran={gran} />
               )}
             </div>
 
             {state && latestSignal && (latestSignal as Signal & { environment?: string }).environment && (
-              <div className="border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-400 flex items-center gap-2">
-                <span className="text-zinc-500">多级别联立：</span>
-                最新信号处于 <span className="text-sky-400 font-medium">{ENV_LABELS[(latestSignal as Signal & { environment?: string }).environment!]}</span>
-                <span className="text-zinc-600">（15m 信号在 1H 环境中的位置决定含义权重）</span>
+              <div className="panel px-3 py-2 text-[12px] text-[var(--fg-1)] flex items-center gap-2">
+                <span className="text-[var(--fg-2)]">多级别联立：</span>
+                最新信号处于 <span className="text-[var(--brand)] font-medium">{ENV_LABELS[(latestSignal as Signal & { environment?: string }).environment!]}</span>
+                <span className="text-[var(--fg-2)]">（15m 信号在 1H 环境中的位置决定含义权重）</span>
               </div>
             )}
 
@@ -143,7 +206,7 @@ export default function Home() {
             )}
           </section>
 
-          {/* 右：决策 */}
+          {/* ===== 右：决策 ===== */}
           {state && (
             <DecisionPanel symbol={symbol} gran={gran} latestSignal={latestSignal}
               stats={latestSignal ? state.stats.find(s => s.kind === latestSignal.kind) : undefined}
@@ -152,11 +215,11 @@ export default function Home() {
         </div>
       </div>
 
-      <footer className="px-6 py-4 text-xs text-zinc-500 border-t border-zinc-800 mt-4 flex flex-wrap gap-x-4 gap-y-1">
-        <span>数据：Bitget 公开行情（rToken 合约 {symbols.length} 标的）</span>
-        <span>缠论引擎：TypeScript 实现（分型→笔→线段→中枢→买卖点+背驰）</span>
+      <footer className="px-5 py-4 text-[11px] text-[var(--fg-2)] border-t border-[var(--line)] mt-4 flex flex-wrap gap-x-4 gap-y-1">
+        <span>数据：Bitget 公开行情（rToken 合约 {symbols.length} 标的 · 每 60s 自动增量刷新）</span>
+        <span>缠论引擎：TypeScript（分型→笔→线段→中枢→买卖点+背驰）</span>
         <span>AI：Qwen3.8-max（Bitget 黑客松额度）</span>
-        <span className="text-zinc-400">AI 仅提供分析，交易决策由交易员作出</span>
+        <span className="text-[var(--brand)]">AI 仅提供分析，交易决策由交易员作出</span>
       </footer>
     </main>
   );

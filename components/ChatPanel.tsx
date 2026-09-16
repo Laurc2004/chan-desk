@@ -2,8 +2,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnalysisState } from '@/app/page';
 import { getSymbols } from '@/lib/bitget';
+import { Markdown } from './Markdown';
 
-interface Msg { role: 'user' | 'assistant'; content: string }
+interface Msg { role: 'user' | 'assistant'; content: string; streaming?: boolean }
 
 const SUGGESTIONS = [
   'TSLA 15分钟级别最近的三买信号，历史上胜率怎么样？',
@@ -29,7 +30,7 @@ export default function ChatPanel({ symbol, gran, state, onApplyQuery }: {
   onApplyQuery: (q: string, sym?: string, g?: string) => void;
 }) {
   const [msgs, setMsgs] = useState<Msg[]>([
-    { role: 'assistant', content: '你好，我是 ChanDesk 分析师。告诉我你的交易想法（标的/级别/信号类型），我会调出该信号在 Bitget rToken 历史上的全部触发与统计分布。最终决策由你做出。' },
+    { role: 'assistant', content: '你好，我是 **ChanDesk 缠论分析师**。\n\n告诉我你的交易想法（标的 / 级别 / 信号类型），我会调出该信号在 Bitget rToken 历史上的全部触发与统计分布。\n\n> 🔒 最终决策由你做出，我只给数据。' },
   ]);
   const [input, setInput] = useState('');
   const [symbols, setSymbols] = useState<string[]>([symbol]);
@@ -62,7 +63,7 @@ export default function ChatPanel({ symbol, gran, state, onApplyQuery }: {
     try {
       const parsed = localParse(q, symbols);
       onApplyQuery(q, parsed.symbol, parsed.gran);
-      const sys = `你是 ChanDesk 的缠论分析师，服务对象是用缠论交易 Bitget rToken（代币化美股，7×24交易）的中文散户。基于给定的历史信号统计回答用户问题。规则：1) 只依据提供的数据说话，数字必须来自统计上下文，不得编造；2) 胜率低于40%或盈亏比<1时明确提示风险；3) 你只能给分析，不能替用户做决定，结尾必须让用户自行判断；4) 若涉及"美股睡了rToken还开着"的休市窗口差异，要点出这是rToken独有场景。`;
+      const sys = `你是 ChanDesk 的缠论分析师，服务对象是用缠论交易 Bitget rToken（代币化美股，7×24交易）的中文散户。基于给定的历史信号统计回答用户问题。规则：1) 只依据提供的数据说话，数字必须来自统计上下文，不得编造；2) 胜率低于40%或盈亏比<1时明确提示风险；3) 你只能给分析，不能替用户做决定，结尾必须让用户自行判断；4) 若涉及"美股睡了rToken还开着"的休市窗口差异，要点出这是rToken独有场景。输出用 Markdown：重要结论用 **加粗**，分项用列表，数据对比用简短表格。`;
       const ctx = buildContext(q);
       const res = await fetch('/api/llm', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -73,11 +74,11 @@ export default function ChatPanel({ symbol, gran, state, onApplyQuery }: {
       });
       if (!res.ok || !res.body) {
         const json = await res.json().catch(() => ({}));
-        setMsgs(m => [...m, { role: 'assistant', content: `（LLM 暂不可用：${json.error ?? res.status}）\n\n本地统计如下：\n${ctx}` }]);
+        setMsgs(m => [...m, { role: 'assistant', content: `（LLM 暂不可用：${json.error ?? res.status}）\n\n**本地统计：**\n\n\`\`\`\n${ctx}\n\`\`\`` }]);
         return;
       }
-      // SSE 流式渲染：reasoning 模型首字慢，边收边显示
-      setMsgs(m => [...m, { role: 'assistant', content: '' }]);
+      // SSE 流式渲染
+      setMsgs(m => [...m, { role: 'assistant', content: '', streaming: true }]);
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = '';
@@ -101,20 +102,25 @@ export default function ChatPanel({ symbol, gran, state, onApplyQuery }: {
               const snapshot = acc;
               setMsgs(m => {
                 const copy = [...m];
-                copy[copy.length - 1] = { role: 'assistant', content: snapshot };
+                copy[copy.length - 1] = { role: 'assistant', content: snapshot, streaming: true };
                 return copy;
               });
             }
           } catch { /* 忽略半包 */ }
         }
       }
-      if (!acc) {
-        setMsgs(m => {
-          const copy = [...m];
-          copy[copy.length - 1] = { role: 'assistant', content: `（LLM 返回为空）\n\n本地统计如下：\n${ctx}` };
-          return copy;
-        });
-      }
+      // 收尾：去掉流式光标
+      setMsgs(m => {
+        const copy = [...m];
+        const lastMsg = copy[copy.length - 1];
+        copy[copy.length - 1] = {
+          role: 'assistant',
+          content: acc || `（LLM 返回为空）\n\n**本地统计：**\n\n\`\`\`\n${ctx}\n\`\`\``,
+          streaming: false,
+        };
+        void lastMsg;
+        return copy;
+      });
     } finally {
       setBusy(false);
       requestAnimationFrame(() => scroller.current?.scrollTo({ top: 1e9 }));
@@ -122,32 +128,44 @@ export default function ChatPanel({ symbol, gran, state, onApplyQuery }: {
   }
 
   return (
-    <section className="border border-zinc-800 rounded-lg flex flex-col h-[560px]">
-      <div className="px-3 py-2 border-b border-zinc-800 text-sm font-semibold text-zinc-200 flex items-center gap-2"><span>💬 投研对话</span><span className="text-[11px] font-normal text-zinc-500">Powered by Qwen</span></div>
-      <div ref={scroller} className="flex-1 overflow-y-auto p-3 space-y-2 text-sm">
+    <section className="panel flex flex-col h-[640px]">
+      <div className="panel-hd">
+        <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)]"></span>
+        投研对话
+        <span className="sub">Powered by Qwen3.8-max</span>
+        <span className="ml-auto sub">Markdown 支持</span>
+      </div>
+      <div ref={scroller} className="flex-1 overflow-y-auto p-3 space-y-3">
         {msgs.map((m, i) => (
-          <div key={i} className={`rounded-lg p-2 whitespace-pre-wrap leading-relaxed ${m.role === 'user' ? 'bg-sky-950/60 ml-6' : 'bg-zinc-900/70 mr-2'}`}>
-            {m.content}
+          <div key={i} className={m.role === 'user'
+            ? 'rounded-lg p-2.5 bg-[var(--bg-3)] border border-[var(--line)] ml-8 text-[13px]'
+            : 'rounded-lg p-2.5 bg-[var(--bg-2)] border border-[var(--line)] mr-2'}>
+            {m.role === 'user'
+              ? <div className="whitespace-pre-wrap leading-relaxed">{m.content}</div>
+              : <Markdown text={m.content} streaming={!!m.streaming} />}
           </div>
         ))}
-        {busy && <div className="text-zinc-500 text-xs">分析师检索历史信号中…</div>}
+        {busy && <div className="text-[var(--fg-2)] text-[11px] px-1">分析师检索历史信号中…</div>}
       </div>
-      {(msgs.length <= 2) && (
-        <div className="px-3 pb-2 space-y-1">
+      {msgs.length <= 2 && (
+        <div className="px-3 pb-2 space-y-1.5">
           {SUGGESTIONS.map(s => (
-            <button key={s} onClick={() => send(s)} className="block w-full text-left text-xs text-zinc-400 hover:text-sky-400 border border-zinc-800 rounded px-2 py-1 truncate">{s}</button>
+            <button key={s} onClick={() => send(s)}
+              className="block w-full text-left text-[12px] text-[var(--fg-1)] hover:text-[var(--brand)] border border-[var(--line)] hover:border-[var(--brand-dim)] rounded-lg px-2.5 py-1.5 truncate transition-colors">
+              {s}
+            </button>
           ))}
         </div>
       )}
-      <div className="p-2 border-t border-zinc-800 flex gap-2">
+      <div className="p-2.5 border-t border-[var(--line)] flex gap-2">
         <input
           value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && send()}
           placeholder="描述你的交易想法…"
-          className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-sm"
+          className="inp flex-1 px-3 py-2 text-[13px]"
         />
         <button onClick={() => send()} disabled={busy}
-          className="bg-sky-600 hover:bg-sky-500 disabled:opacity-40 rounded px-3 text-sm">发送</button>
+          className="btn btn-brand px-4 py-2 text-[13px]">发送</button>
       </div>
     </section>
   );

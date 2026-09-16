@@ -1,26 +1,109 @@
 @import "tailwindcss";
 
+/* ===== Bitget 主题 ===== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Bitget 品牌蓝 #00E0D1（青色主色）+ 深色底 */
+  --bg-0: #0a0e17;          /* 最深背景 */
+  --bg-1: #101623;          /* 面板背景 */
+  --bg-2: #161d2e;          /* 卡片/悬浮层 */
+  --bg-3: #1d2638;          /* 输入/hover */
+  --line: #232d42;          /* 边框 */
+  --fg-0: #eef2f8;          /* 主文字 */
+  --fg-1: #9aa7bd;          /* 次文字 */
+  --fg-2: #5c6b84;          /* 弱化 */
+  --brand: #00e0d1;         /* Bitget 青 */
+  --brand-dim: #00b8ab;
+  --up: #00c087;            /* 涨/买 */
+  --down: #f45b5b;          /* 跌/卖 */
+  --warn: #f5b544;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg-0);
+  --color-foreground: var(--fg-0);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--bg-0);
+  color: var(--fg-0);
+  font-family: -apple-system, "SF Pro SC", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ===== 通用面板（OKX 卡片感）===== */
+.panel {
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 10px;
 }
+.panel-hd {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px; font-weight: 600; color: var(--fg-0);
+}
+.panel-hd .sub { font-weight: 400; font-size: 11px; color: var(--fg-2); }
+
+/* ===== Bitget 按钮 ===== */
+.btn {
+  border-radius: 8px; font-weight: 600; transition: all .15s;
+  border: 1px solid transparent;
+}
+.btn-brand { background: var(--brand); color: #06121a; }
+.btn-brand:hover { background: #2ef0e1; }
+.btn-brand:disabled { opacity: .35; }
+.btn-ghost { background: var(--bg-3); color: var(--fg-1); }
+.btn-ghost:hover { background: #25304a; color: var(--fg-0); }
+.btn-up { background: var(--up); color: #06121a; }
+.btn-up:hover { filter: brightness(1.12); }
+.btn-down-ghost { background: var(--bg-3); color: var(--fg-1); }
+.btn-down-ghost:hover { color: var(--down); border-color: var(--down); }
+
+/* ===== 输入 ===== */
+.inp {
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 8px;
+  color: var(--fg-0); transition: border-color .15s;
+}
+.inp:focus { outline: none; border-color: var(--brand-dim); }
+
+/* ===== 自定义下拉（OKX 感）===== */
+.dropdown-panel {
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.55);
+  overflow: hidden;
+}
+.dropdown-item { transition: background .1s; }
+.dropdown-item:hover { background: var(--bg-3); }
+.dropdown-item.active { color: var(--brand); }
+
+/* ===== 滚动条 ===== */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--line); }
+
+/* ===== 对话气泡 Markdown ===== */
+.md-body { line-height: 1.65; font-size: 13px; }
+.md-body p { margin: 4px 0; }
+.md-body ul, .md-body ol { margin: 6px 0; padding-left: 20px; }
+.md-body li { margin: 2px 0; }
+.md-body strong { color: var(--brand); font-weight: 600; }
+.md-body code { background: var(--bg-3); padding: 1px 5px; border-radius: 4px; font-size: 12px; color: var(--warn); }
+.md-body pre { background: var(--bg-0); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 6px 0; overflow-x: auto; }
+.md-body pre code { background: none; padding: 0; }
+.md-body h1, .md-body h2, .md-body h3 { font-weight: 700; margin: 10px 0 4px; color: var(--fg-0); }
+.md-body h3 { font-size: 14px; }
+.md-body blockquote { border-left: 2px solid var(--brand-dim); padding-left: 10px; color: var(--fg-1); margin: 6px 0; }
+.md-body table { border-collapse: collapse; margin: 8px 0; width: 100%; font-size: 12px; }
+.md-body th, .md-body td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
+.md-body th { background: var(--bg-3); color: var(--fg-1); }
+.md-body a { color: var(--brand); }
+
+/* 光标闪烁（流式） */
+.stream-cursor::after {
+  content: '▋'; color: var(--brand); animation: blink .8s step-end infinite; margin-left: 1px;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* 数字字体（行情感） */
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }

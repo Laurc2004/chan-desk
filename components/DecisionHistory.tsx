@@ -45,23 +45,23 @@ export default function DecisionHistory({ refreshKey }: { refreshKey: number }) 
   }, [refreshKey]);
 
   if (error === '未配置') return null;
-  if (!rows) return <div className="text-xs text-zinc-600">档案加载中…</div>;
+  if (!rows) return <div className="text-[11px] text-[var(--fg-2)]">档案加载中…</div>;
 
   return (
-    <div className="border border-zinc-800 rounded-lg p-3 space-y-2">
-      <h3 className="text-xs font-semibold text-zinc-300">🗂️ 我的决策档案（本次会话 {rows.length} 条）</h3>
-      {rows.length === 0 && <p className="text-[11px] text-zinc-600">还没有决策记录。在上方对最新信号点击采纳/忽略后会出现在这里。</p>}
+    <div className="bg-[var(--bg-2)] border border-[var(--line)] rounded-lg p-3 space-y-2">
+      <h3 className="text-[12px] font-semibold text-[var(--fg-0)]">🗂️ 我的决策档案（本次会话 {rows.length} 条）</h3>
+      {rows.length === 0 && <p className="text-[11px] text-[var(--fg-2)]">还没有决策记录。在上方对最新信号点击采纳/忽略后会出现在这里。</p>}
       <div className="max-h-56 overflow-y-auto space-y-1.5">
         {rows.map(r => (
-          <div key={r.id} className="bg-zinc-900/60 rounded p-2 text-[11px] leading-relaxed">
+          <div key={r.id} className="bg-[var(--bg-3)] rounded-md p-2 text-[11px] leading-relaxed">
             <div className="flex items-center gap-2">
-              <span className={r.decision === 'adopt' ? 'text-emerald-400 font-medium' : 'text-zinc-400 font-medium'}>
+              <span className={r.decision === 'adopt' ? 'text-[var(--up)] font-medium' : 'text-[var(--fg-1)] font-medium'}>
                 {r.decision === 'adopt' ? '✓ 采纳' : '✕ 忽略'}
               </span>
-              <span className="text-zinc-300">{r.symbol.replace('USDT', '')} · {KIND_LABELS[r.signal_kind] ?? r.signal_kind}</span>
-              <span className="text-zinc-600 ml-auto">{new Date(r.created_at).toLocaleString('zh-CN', { hour12: false })}</span>
+              <span className="text-[var(--fg-0)]">{r.symbol.replace('USDT', '')} · {KIND_LABELS[r.signal_kind] ?? r.signal_kind}</span>
+              <span className="text-[var(--fg-2)] ml-auto num">{new Date(r.created_at).toLocaleString('zh-CN', { hour12: false })}</span>
             </div>
-            {r.reason && <p className="text-zinc-500 mt-0.5">{r.reason}</p>}
+            {r.reason && <p className="text-[var(--fg-1)] mt-0.5">{r.reason}</p>}
           </div>
         ))}
       </div>

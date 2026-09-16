@@ -14,6 +14,7 @@ interface AggPayload { granularity: string; symbols: string[]; dateRange: string
 
 const pct = (v: number | null) => v === null ? '—' : `${(v * 100).toFixed(0)}%`;
 const num = (v: number | null) => v === null ? '—' : `${v.toFixed(2)}%`;
+const num2 = (v: number | null) => v === null ? '—' : v.toFixed(2);
 
 export default function AggregatePanel({ gran }: { gran: string }) {
   const [data, setData] = useState<AggPayload | null>(null);
@@ -28,34 +29,32 @@ export default function AggregatePanel({ gran }: { gran: string }) {
   }, [gran]);
 
   if (error) return null;
-  if (!data) return <div className="border border-zinc-800 rounded-lg p-4 text-sm text-zinc-500">加载全市场汇总…</div>;
+  if (!data) return <div className="panel p-4 text-[13px] text-[var(--fg-2)]">加载全市场汇总…</div>;
 
   return (
-    <div className="border border-zinc-800 rounded-lg p-4 space-y-2">
-      <h2 className="text-sm font-semibold text-zinc-300">
-        🌐 全市场大样本 ·  {data.symbols.length} 标的 × {data.dateRange[0]} → {data.dateRange[1]}
+    <div className="panel p-4 space-y-2">
+      <h2 className="text-[13px] font-semibold">
+        🌐 全市场大样本 · {data.symbols.length} 标的 × {data.dateRange[0]} → {data.dateRange[1]}
       </h2>
-      <div className="grid grid-cols-[88px_1fr_1fr_1fr_1fr] text-xs text-zinc-500 pb-1 border-b border-zinc-800">
+      <div className="grid grid-cols-[84px_1fr_1fr_1fr_1fr] text-[11px] text-[var(--fg-2)] pb-1.5 border-b border-[var(--line)]">
         <span>信号</span><span>样本</span><span>盘中胜率/中位</span><span>休市胜率/中位</span><span>盈亏比(盘/休)</span>
       </div>
       {data.entries.map(e => (
-        <div key={e.kind} className="grid grid-cols-[88px_1fr_1fr_1fr_1fr] text-xs tabular-nums items-center">
-          <span className="text-zinc-300">{KIND_LABELS[e.kind]}</span>
-          <span className="text-zinc-400">{e.total}</span>
+        <div key={e.kind} className="grid grid-cols-[84px_1fr_1fr_1fr_1fr] text-[12px] num items-center py-0.5">
+          <span className="text-[var(--fg-0)]">{KIND_LABELS[e.kind]}</span>
+          <span className="text-[var(--fg-1)]">{e.total}</span>
           <span>
-            <span className={(e.inHours.winRate12 ?? 0) >= 0.5 ? 'text-emerald-400' : 'text-red-400'}>{pct(e.inHours.winRate12)}</span>
-            <span className="text-zinc-500"> / {num(e.inHours.medianRet12)}</span>
+            <span className={(e.inHours.winRate12 ?? 0) >= 0.5 ? 'text-[var(--up)]' : 'text-[var(--down)]'}>{pct(e.inHours.winRate12)}</span>
+            <span className="text-[var(--fg-2)]"> / {num(e.inHours.medianRet12)}</span>
           </span>
           <span>
-            <span className={(e.offHours.winRate12 ?? 0) >= 0.5 ? 'text-emerald-400' : 'text-red-400'}>{pct(e.offHours.winRate12)}</span>
-            <span className="text-zinc-500"> / {num(e.offHours.medianRet12)}</span>
+            <span className={(e.offHours.winRate12 ?? 0) >= 0.5 ? 'text-[var(--up)]' : 'text-[var(--down)]'}>{pct(e.offHours.winRate12)}</span>
+            <span className="text-[var(--fg-2)]"> / {num(e.offHours.medianRet12)}</span>
           </span>
-          <span className="text-zinc-400">{num2(e.inHours.payoff)} / {num2(e.offHours.payoff)}</span>
+          <span className="text-[var(--fg-1)]">{num2(e.inHours.payoff)} / {num2(e.offHours.payoff)}</span>
         </div>
       ))}
-      <p className="text-[11px] text-zinc-600">同类信号跨 9 个 rToken 标的合并的大样本；12 根K线窗口按信号方向计收益。</p>
+      <p className="text-[11px] text-[var(--fg-2)]">同类信号跨 {data.symbols.length} 个 rToken 标的合并的大样本；12 根K线窗口按信号方向计收益。</p>
     </div>
   );
 }
-
-function num2(v: number | null) { return v === null ? '—' : v.toFixed(2); }

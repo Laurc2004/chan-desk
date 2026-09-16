@@ -63,8 +63,8 @@ export default function KlineChart({ bars, signals, pivots, symbol, gran }: {
     ensurePivotRectRegistered();
     const chart = init(ref.current, {
       styles: {
-        grid: { horizontal: { color: '#1b2029' }, vertical: { color: '#1b2029' } },
-        candle: { bar: { upColor: '#22c55e', downColor: '#ef4444', upWickColor: '#22c55e', downWickColor: '#ef4444' } },
+        grid: { horizontal: { color: '#1a2130' }, vertical: { color: '#1a2130' } },
+        candle: { bar: { upColor: '#00c087', downColor: '#f45b5b', upWickColor: '#00c087', downWickColor: '#f45b5b' } },
         xAxis: { axisLine: { show: false } },
       },
       timezone: 'America/New_York',
@@ -88,7 +88,7 @@ export default function KlineChart({ bars, signals, pivots, symbol, gran }: {
             name: 'simpleAnnotation',
             points: [{ timestamp: s.ts, value: s.price }],
             extendData: `${KIND_TAG[s.kind] ?? s.kind}${s.divergence ? '⚠背驰' : ''}`,
-            styles: { line: { color: s.kind.includes('buy') || s.kind.includes('up') ? '#22c55e' : '#ef4444' } },
+            styles: { line: { color: s.kind.includes('buy') || s.kind.includes('up') ? '#00c087' : '#f45b5b' } },
           }));
           for (const p of pivots) {
             overlays.push({
