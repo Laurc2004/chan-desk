@@ -15,11 +15,19 @@
 - [x] UI：对话/K线(信号+中枢+背驰标记)/单标的统计/全市场汇总/决策面板
 - [x] `next build` 全绿
 
-## 待办（按排期）
+## Session 2026-09-15（D3 进行中）
 
-- [ ] D2: 跨标的汇总统计（决策压力测试的"大样本"层）+ 演示剧本用例固化
-- [ ] D3: Qwen key 配置 + 实测 LLM 链路；bitget-signal Skill 调研接入
-- [ ] D4: UI 打磨（图表交互、信号点 hover 详情）
-- [ ] D5: Supabase decisions 表 + 部署 Vercel + 演示录屏
-- [ ] D6: 表单六段说明 + 提交
-- [ ] 用户侧：X 首帖（含 #BitgetHackathon @Bitget_AI + 转发官方开赛帖）、Qwen 申请表、TG 群
+- [x] Qwen API key 到位（用户领到 30U 额度）：写入 gitignored .env，.env.example 已入库
+- [x] LLM 链路实测全通：
+  - 直连 hackathon.bitgetops.com/v1 chat/completions → 200
+  - dev server /api/llm 带真实统计上下文 → 200，回答质量高（会自己算盈亏比 0.28%/0.92%≈0.30 然后提示风险，最后让用户自行判断——完全符合赛道"人做决策"要求）
+  - 注意：qwen3.8-max 是 reasoning 模型，首响应 ~71s（dev 日志 POST /api/llm 200 in 71s）。Vercel maxDuration 已设 60，可能需要调到更长或前端加"思考中"提示
+- [x] 静态数据全部 200（K线/汇总/symbols）
+
+## 待办
+
+- [ ] /api/llm maxDuration 加大 + 前端等待提示优化（71s 首响应）
+- [ ] 部署 Vercel（QWEN_API_KEY 配到环境变量）
+- [ ] bitget-signal Skill 接入
+- [ ] 演示录屏
+- [ ] 表单六段说明

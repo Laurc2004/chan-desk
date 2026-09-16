@@ -66,14 +66,55 @@ export default function ChatPanel({ symbol, gran, state, onApplyQuery }: {
       const ctx = buildContext(q);
       const res = await fetch('/api/llm', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [
+        body: JSON.stringify({ stream: true, messages: [
           { role: 'system', content: sys },
           { role: 'user', content: `历史统计上下文：\n${ctx}\n\n用户问题：${q}` },
         ] }),
       });
-      const json = await res.json().catch(() => ({}));
-      const content = json.content ?? `（LLM 暂不可用：${json.error ?? '未知错误'}）\n\n本地统计如下：\n${ctx}`;
-      setMsgs(m => [...m, { role: 'assistant', content }]);
+      if (!res.ok || !res.body) {
+        const json = await res.json().catch(() => ({}));
+        setMsgs(m => [...m, { role: 'assistant', content: `（LLM 暂不可用：${json.error ?? res.status}）\n\n本地统计如下：\n${ctx}` }]);
+        return;
+      }
+      // SSE 流式渲染：reasoning 模型首字慢，边收边显示
+      setMsgs(m => [...m, { role: 'assistant', content: '' }]);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      let acc = '';
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+        for (const line of lines) {
+          const t = line.trim();
+          if (!t.startsWith('data:')) continue;
+          const payload = t.slice(5).trim();
+          if (payload === '[DONE]') continue;
+          try {
+            const j = JSON.parse(payload);
+            const delta = j?.choices?.[0]?.delta?.content ?? j?.choices?.[0]?.message?.content ?? '';
+            if (delta) {
+              acc += delta;
+              const snapshot = acc;
+              setMsgs(m => {
+                const copy = [...m];
+                copy[copy.length - 1] = { role: 'assistant', content: snapshot };
+                return copy;
+              });
+            }
+          } catch { /* 忽略半包 */ }
+        }
+      }
+      if (!acc) {
+        setMsgs(m => {
+          const copy = [...m];
+          copy[copy.length - 1] = { role: 'assistant', content: `（LLM 返回为空）\n\n本地统计如下：\n${ctx}` };
+          return copy;
+        });
+      }
     } finally {
       setBusy(false);
       requestAnimationFrame(() => scroller.current?.scrollTo({ top: 1e9 }));
